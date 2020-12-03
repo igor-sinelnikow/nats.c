@@ -901,7 +901,7 @@ If you have multiple connections running in your process, the number of threads 
 
 This works by setting the event loop and various callbacks through the `natsOptions_SetEventLoop()` API. Depending of the event loop you are using, you then have extra API calls to make. The API is in the `adapters` directory and is documented.
 
-We provide adapters for two event notification libraries: [libevent](https://github.com/libevent/libevent), and [libuv](https://github.com/libuv/libuv).
+We provide adapters for the following event notification libraries: [libevent](https://github.com/libevent/libevent), [libuv](https://github.com/libuv/libuv) and [libev](http://software.schmorp.de/pkg/libev.html).
 
 ```c
 // Create an event loop object
@@ -940,7 +940,7 @@ natsConnection_FlushTimeout()
 ...
 ```
 
-Indeed, since these calls publish data and wait for a 'response', if you execute then in the event loop thread (or while the loop is not 'running'), then data will not be sent out. Calls will fail to get a response and timeout.
+Indeed, since these calls publish data and wait for a 'response', if you execute them in the event loop thread (or while the loop is not 'running'), then data will not be sent out. Calls will fail to get a response and timeout.
 
 For `natsConnection_Request()`, use the `natsConnection_PublishRequest()` instead, and have a subscriber for the response registered.
 

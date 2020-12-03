@@ -18,6 +18,10 @@ if(NATS_BUILD_LIBEVENT_EXAMPLE AND LIBEVENT_DIR)
   include_directories(${LIBEVENT_DIR}/include)
 endif()
 
+if(NATS_BUILD_LIBEV_EXAMPLE AND LIBEV_DIR)
+  include_directories(${LIBEV_DIR}/include)
+endif()
+
 if(WIN32)
   set(LIB_SUFFIX ${CMAKE_STATIC_LIBRARY_SUFFIX})
 else()
@@ -43,6 +47,7 @@ foreach(examples_src ${EXAMPLES_SOURCES})
     set(exampleexe "nats-${examplename}")
 
     set(buildExample OFF)
+    set(strictAliasing 1)
     set(NATS_ASYNC_IO_LIB "")
 
     if(examplename MATCHES "libuv")
@@ -70,6 +75,16 @@ foreach(examples_src ${EXAMPLES_SOURCES})
           endif()
         endif()
       endif()
+    elseif(examplename MATCHES "libev")
+      if(NATS_BUILD_LIBEV_EXAMPLE)
+        set(buildExample ON)
+        set(strictAliasing 0)
+        if(LIBEV_DIR)
+          set(NATS_ASYNC_IO_LIB ${LIBEV_DIR}/lib/libev${LIB_SUFFIX})
+        else()
+          set(NATS_ASYNC_IO_LIB ev)
+        endif()
+      endif()
     else()
       set(buildExample ON)
     endif()
@@ -77,6 +92,9 @@ foreach(examples_src ${EXAMPLES_SOURCES})
     if(buildExample)
       # Build the executable
       add_executable(${exampleexe} ${PROJECT_SOURCE_DIR}/examples/${examples_src})
+
+      # Silence strict-aliasing warning in libev
+      target_compile_options(${exampleexe} PRIVATE $<$<NOT:${strictAliasing}>:-fno-strict-aliasing>)
 
       # Link
       if(NATS_BUILD_STATIC_EXAMPLES)

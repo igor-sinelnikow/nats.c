@@ -79,7 +79,7 @@ endif(NATS_BUILD_LIB_STATIC)
 
 install(FILES deprnats.h DESTINATION ${NATS_INCLUDE_DIR} RENAME nats.h)
 install(FILES nats.h status.h version.h DESTINATION ${NATS_INCLUDE_DIR}/nats)
-install(FILES adapters/libevent.h adapters/libuv.h DESTINATION ${NATS_INCLUDE_DIR}/nats/adapters)
+install(FILES adapters/libevent.h adapters/libuv.h adapters/libev.h DESTINATION ${NATS_INCLUDE_DIR}/nats/adapters)
 
 # --------------------------------------
 # Setup the coveralls target and tell it
