@@ -30,7 +30,7 @@ typedef struct
     struct ev_loop  *loop;
     ev_io           read;
     ev_io           write;
-    ev_idle         keepActive;
+    ev_async        keepActive;
 
 } natsLibevEvents;
 
@@ -58,7 +58,7 @@ natsLibev_ProcessEvent(struct ev_loop *loop, ev_io *w, int revents)
 }
 
 static void
-keepAliveCb(struct ev_loop *loop, ev_idle *w, int revents)
+keepAliveCb(struct ev_loop *loop, ev_async *w, int revents)
 {
     // do nothing...
 }
@@ -91,8 +91,8 @@ natsLibev_Attach(void **userData, void *loop, natsConnection *nc, natsSock socke
         nle->nc   = nc;
         nle->loop = libevLoop;
 
-        ev_idle_init(&nle->keepActive, keepAliveCb);
-        ev_idle_start(nle->loop, &nle->keepActive);
+        ev_async_init(&nle->keepActive, keepAliveCb);
+        ev_async_start(nle->loop, &nle->keepActive);
 
         ev_init(&nle->read, natsLibev_ProcessEvent);
         nle->read.data = (void*) nle;
@@ -172,8 +172,8 @@ natsLibev_Detach(void *userData)
 
     ev_io_stop(nle->loop, &nle->read);
     ev_io_stop(nle->loop, &nle->write);
-    ev_feed_event(nle->loop, &nle->keepActive, 0);
-    ev_idle_stop(nle->loop, &nle->keepActive);
+    ev_async_send(nle->loop, &nle->keepActive);
+    ev_async_stop(nle->loop, &nle->keepActive);
 
     free(nle);
 
