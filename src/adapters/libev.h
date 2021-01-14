@@ -34,6 +34,10 @@ typedef struct
 
 } natsLibevEvents;
 
+// Forward declarations
+natsStatus natsLibev_Read(void *userData, bool add);
+natsStatus natsLibev_Write(void *userData, bool add);
+
 /** \endcond
  *
  */
@@ -102,12 +106,12 @@ natsLibev_Attach(void **userData, void *loop, natsConnection *nc, natsSock socke
     }
     else
     {
-        ev_io_stop(nle->loop, &nle->read);
-        ev_io_stop(nle->loop, &nle->write);
+        natsLibev_Read((void*) nle, false);
+        natsLibev_Write((void*) nle, false);
     }
 
     ev_io_set(&nle->read, socket, EV_READ);
-    ev_io_start(nle->loop, &nle->read);
+    natsLibev_Read((void*) nle, true);
 
     ev_io_set(&nle->write, socket, EV_WRITE);
 
@@ -138,6 +142,7 @@ natsLibev_Read(void *userData, bool add)
 {
     natsLibevEvents *nle = (natsLibevEvents*) userData;
     ev_io_toggle(nle->loop, &nle->read, add);
+    ev_async_send(nle->loop, &nle->keepActive);
     return NATS_OK;
 }
 
@@ -154,6 +159,7 @@ natsLibev_Write(void *userData, bool add)
 {
     natsLibevEvents *nle = (natsLibevEvents*) userData;
     ev_io_toggle(nle->loop, &nle->write, add);
+    ev_async_send(nle->loop, &nle->keepActive);
     return NATS_OK;
 }
 
@@ -170,9 +176,8 @@ natsLibev_Detach(void *userData)
 {
     natsLibevEvents *nle = (natsLibevEvents*) userData;
 
-    ev_io_stop(nle->loop, &nle->read);
-    ev_io_stop(nle->loop, &nle->write);
-    ev_async_send(nle->loop, &nle->keepActive);
+    natsLibev_Read(userData, false);
+    natsLibev_Write(userData, false);
     ev_async_stop(nle->loop, &nle->keepActive);
 
     free(nle);
