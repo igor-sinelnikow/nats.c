@@ -29,7 +29,7 @@ typedef struct
     natsConnection  *nc;
     struct ev_loop  *loop;
     ev_io           read;
-    ev_io           write;
+    ev_idle         write;
     ev_async        keepActive;
 
 } natsLibevEvents;
@@ -50,15 +50,19 @@ natsStatus natsLibev_Write(void *userData, bool add);
  */
 
 static void
-natsLibev_ProcessEvent(struct ev_loop *loop, ev_io *w, int revents)
+natsLibev_ProcessReadEvent(struct ev_loop *loop, ev_io *w, int revents)
 {
     natsLibevEvents *nle = (natsLibevEvents*) w->data;
 
-    if (revents & EV_READ)
-        natsConnection_ProcessReadEvent(nle->nc);
+    natsConnection_ProcessReadEvent(nle->nc);
+}
 
-    if (revents & EV_WRITE)
-        natsConnection_ProcessWriteEvent(nle->nc);
+static void
+natsLibev_ProcessWriteEvent(struct ev_loop *loop, ev_idle *w, int revents)
+{
+    natsLibevEvents *nle = (natsLibevEvents*) w->data;
+
+    natsConnection_ProcessWriteEvent(nle->nc);
 }
 
 static void
@@ -98,10 +102,10 @@ natsLibev_Attach(void **userData, void *loop, natsConnection *nc, natsSock socke
         ev_async_init(&nle->keepActive, keepAliveCb);
         ev_async_start(nle->loop, &nle->keepActive);
 
-        ev_init(&nle->read, natsLibev_ProcessEvent);
+        ev_init(&nle->read, natsLibev_ProcessReadEvent);
         nle->read.data = (void*) nle;
 
-        ev_init(&nle->write, natsLibev_ProcessEvent);
+        ev_init(&nle->write, natsLibev_ProcessWriteEvent);
         nle->write.data = (void*) nle;
     }
     else
@@ -113,7 +117,7 @@ natsLibev_Attach(void **userData, void *loop, natsConnection *nc, natsSock socke
     ev_io_set(&nle->read, socket, EV_READ);
     natsLibev_Read((void*) nle, true);
 
-    ev_io_set(&nle->write, socket, EV_WRITE);
+    ev_idle_set(&nle->write);
 
     *userData = (void*) nle;
 
@@ -127,6 +131,15 @@ ev_io_toggle(struct ev_loop *loop, ev_io *w, bool on)
         ev_io_start(loop, w);
     else
         ev_io_stop(loop, w);
+}
+
+static void
+ev_idle_toggle(struct ev_loop *loop, ev_idle *w, bool on)
+{
+    if (on)
+        ev_idle_start(loop, w);
+    else
+        ev_idle_stop(loop, w);
 }
 
 /** \brief Start or stop polling on READ events.
@@ -158,7 +171,7 @@ natsStatus
 natsLibev_Write(void *userData, bool add)
 {
     natsLibevEvents *nle = (natsLibevEvents*) userData;
-    ev_io_toggle(nle->loop, &nle->write, add);
+    ev_idle_toggle(nle->loop, &nle->write, add);
     ev_async_send(nle->loop, &nle->keepActive);
     return NATS_OK;
 }
